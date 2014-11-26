@@ -88,14 +88,38 @@ app.get('/signup', function(req, res) {
 app.post('/login', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
-  res.redirect('/');
+
+  new User({ username: username, password:password}).fetch().then(function(found) {
+    if (found) {
+      res.redirect('/');
+    } else {
+      res.send(302, 'Invalid Password');
+    }
+  });
 });
 
 
 app.post('/signup', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
-  res.redirect('/');
+
+  new User({ username: username}).fetch().then(function(found) {
+    if (found) {
+      res.send(200, 'User Already Exist');
+    } else {
+      var user = new User({
+        username: username,
+        password: password
+      });
+
+      user.save().then(function(newUser) {
+        Users.add(newUser);
+        console.log('newUser',newUser);
+        console.log('Users',Users);
+        res.redirect('/');
+      });
+    }
+  });
 });
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail

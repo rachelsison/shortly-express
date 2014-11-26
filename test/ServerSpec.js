@@ -9,7 +9,7 @@ var Link = require('../app/models/link');
 
 /************************************************************/
 // Mocha doesn't have a way to designate pending before blocks.
-// Mimic the behavior of xit and xdescribe with xbeforeEach.
+// Mimic the behavior of xit and describe with xbeforeEach.
 // Remove the 'x' from beforeEach block when working on
 // authentication tests.
 /************************************************************/
@@ -238,7 +238,7 @@ describe('', function() {
 
   }); // 'Priviledged Access'
 
-  xdescribe('Account Creation:', function(){
+  describe('Account Creation:', function(){
 
     it('Signup creates a user record', function(done) {
       var options = {
@@ -286,7 +286,7 @@ describe('', function() {
 
   }); // 'Account Creation'
 
-  xdescribe('Account Login:', function(){
+  describe('Account Login:', function(){
 
     var requestWithSession = request.defaults({jar: true});
 
