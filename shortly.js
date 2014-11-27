@@ -9,6 +9,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var bcrypt = require('bcrypt-nodejs');
 
 var app = express();
 
@@ -44,7 +45,6 @@ function restrict(req, res, next) {
 
 app.get('/', restrict,
 function(req, res) {
-  console.log('in restrict function', req.session);
   res.render('index');
 });
 
@@ -65,7 +65,6 @@ function(req, res) {
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
-    console.log('Not a valid url: ', uri);
     return res.send(404);
   }
 
@@ -117,17 +116,27 @@ app.post('/login', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
-  new User({ username: username, password:password}).fetch().then(function(found) {
+
+  new User({ username: username}).fetch().then(function(found) {
     if (found) {
-      req.session.regenerate(function(err){
-        console.log('err', err);
-        req.session.user = username;
-        console.log('inside login function', req.session);
-        console.log(req.session);
-        res.redirect('/');
-      });
+
+      bcrypt.compare(password, found.attributes.password, function(err, response) {
+          // res == true
+          if(response){
+            req.session.regenerate(function(err){
+              console.log(err);
+              req.session.user = username;
+              res.redirect('/');
+            });
+          } else {
+            console.log(err);
+            res.send(302, 'WRONG PASSWORD');
+          }
+          console.log('res',res);
+        });
+
     } else {
-      res.send(302, 'Invalid Password');
+      res.send(302, 'User Does Not Exist');
     }
   });
 });
@@ -137,22 +146,24 @@ app.post('/signup', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
-  new User({ username: username}).fetch().then(function(found) {
-    if (found) {
-      res.send(200, 'User Already Exist');
-    } else {
-      var user = new User({
-        username: username,
-        password: password
-      });
+  bcrypt.genSalt(10, function(err, salt) {
+    bcrypt.hash(password, salt, null, function(err, hash) {
+      new User({ username: username}).fetch().then(function(found) {
+        if (found) {
+          res.send(200, 'User Already Exist');
+        } else {
+          var user = new User({
+            username: username,
+            password: hash
+          });
 
-      user.save().then(function(newUser) {
-        Users.add(newUser);
-        console.log('newUser',newUser);
-        console.log('Users',Users);
-        res.redirect('/');
+          user.save().then(function(newUser) {
+            Users.add(newUser);
+            res.redirect('/');
+          });
+        }
       });
-    }
+    });
   });
 });
 /************************************************************/
