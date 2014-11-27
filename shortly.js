@@ -2,8 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
-
+var session = require('express-session');
 var db = require('./app/config');
 var Users = require('./app/collections/users');
 var User = require('./app/models/user');
@@ -13,6 +12,11 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+// app.use(function(req,res, next) {
+//   req.headers.cookie = null;
+//   next();
+// });
+
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -21,26 +25,42 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+// app.use(cookieParser('your secret here'));
+app.use(session({
+  secret: 'My super session secret',
+  resave: false,
+  saveUninitialized: true
+}));
+
+function restrict(req, res, next) {
+  if (req.session.user) {
+    next();
+  } else {
+    req.session.error = 'Access denied!';
+    res.redirect('/login');
+  }
+}
 
 
-app.get('/',
+app.get('/', restrict,
+function(req, res) {
+  console.log('in restrict function', req.session);
+  res.render('index');
+});
+
+app.get('/create', restrict,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create',
-function(req, res) {
-  res.render('index');
-});
-
-app.get('/links',
+app.get('/links', restrict,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links',
+app.post('/links', restrict,
 function(req, res) {
   var uri = req.body.url;
 
@@ -85,13 +105,27 @@ app.get('/signup', function(req, res) {
   res.render('signup');
 });
 
+app.get('/logout', function(req,res) {
+
+  // req.session.destroy(function(){
+  //   res.redirect('/');
+  // });
+
+});
+
 app.post('/login', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
   new User({ username: username, password:password}).fetch().then(function(found) {
     if (found) {
-      res.redirect('/');
+      req.session.regenerate(function(err){
+        console.log('err', err);
+        req.session.user = username;
+        console.log('inside login function', req.session);
+        console.log(req.session);
+        res.redirect('/');
+      });
     } else {
       res.send(302, 'Invalid Password');
     }
